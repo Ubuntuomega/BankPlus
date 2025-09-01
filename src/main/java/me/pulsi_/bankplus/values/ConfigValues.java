@@ -37,7 +37,8 @@ public class ConfigValues extends ValueLoader {
     private static String offlineInterestMessage, interestOfflinePermission;
     private static long offlineInterestLimit;
     private static boolean sqlEnabled, sqlUsingSSL;
-    private static String sqlHost, sqlPort, sqlDatabase, sqlUsername, sqlPassword;
+    private static String sqlHost, sqlDatabase, sqlUsername, sqlPassword;
+    private static int sqlPort;
     private static long interestDelay, notifyOfflineInterestDelay, saveDelay, updateBankTopDelay;
     private static int afkPlayersTime;
     private static int maxDecimalsAmount;
@@ -132,7 +133,7 @@ public class ConfigValues extends ValueLoader {
         sqlEnabled = config.getBoolean("General-Settings.MySQL.Enabled");
         sqlUsingSSL = config.getBoolean("General-Settings.MySQL.Use-SSL");
         sqlHost = config.getString("General-Settings.MySQL.Host");
-        sqlPort = config.getString("General-Settings.MySQL.Port");
+        sqlPort = config.getInt("General-Settings.MySQL.Port");
         sqlDatabase = config.getString("General-Settings.MySQL.Database");
         sqlUsername = config.getString("General-Settings.MySQL.Username");
         sqlPassword = config.getString("General-Settings.MySQL.Password");
@@ -410,7 +411,7 @@ public class ConfigValues extends ValueLoader {
         return sqlHost;
     }
 
-    public static String getSqlPort() {
+    public static int getSqlPort() {
         return sqlPort;
     }
 
@@ -546,7 +547,9 @@ public class ConfigValues extends ValueLoader {
         return usingEssentialsXAFK;
     }
 
-    public static boolean isUsingCmiAfk() { return usingCmiAfk;}
+    public static boolean isUsingCmiAfk() {
+        return usingCmiAfk;
+    }
 
     public static boolean isUsingBankBalanceToUpgrade() {
         return usingBankBalanceToUpgrade;

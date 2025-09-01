@@ -1,4 +1,8 @@
-plugins { java }
+plugins {
+    java
+    id("idea")
+    id("com.gradleup.shadow") version "9.0.2"
+}
 
 group = "me.pulsi_"
 version = "6.4"
@@ -43,9 +47,18 @@ dependencies {
         )
     ) // CMI-Api: 9.7.4.1 (https://github.com/Zrips/CMI-API/releases)
 
+    implementation("com.zaxxer:HikariCP:7.0.2")
+
     implementation("net.essentialsx:EssentialsX:2.21.0") {
         // It is requesting spigot api, but it goes in conflict with paper api.
         exclude("org.spigotmc")
+    }
+}
+
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = false
     }
 }
 
@@ -74,4 +87,8 @@ tasks.processResources {
     filesMatching("plugin.yml") {
         expand(props)
     }
+}
+
+tasks.shadowJar {
+    relocate("com.zaxxer.hikari", "me.pulsi_.bankplus.internalLibs.hikari")
 }

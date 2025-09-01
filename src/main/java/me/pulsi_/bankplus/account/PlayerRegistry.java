@@ -4,7 +4,6 @@ import me.pulsi_.bankplus.BankPlus;
 import me.pulsi_.bankplus.bankSystem.Bank;
 import me.pulsi_.bankplus.bankSystem.BankRegistry;
 import me.pulsi_.bankplus.economy.BPEconomy;
-import me.pulsi_.bankplus.mySQL.BPSQL;
 import me.pulsi_.bankplus.utils.BPLogger;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -68,12 +67,7 @@ public class PlayerRegistry {
         }
         BPEconomy economy = bank.getBankEconomy();
 
-        if (BPSQL.isConnected()) {
-            // If MySQL is enabled, load the player asynchronously, it may take few more
-            // milliseconds but this will ensure to not affect server performance
-            // and the player values will be visible after the player has been loaded.
-            Bukkit.getScheduler().runTaskAsynchronously(BankPlus.INSTANCE(), () -> economy.loadPlayer(p, wasRegistered));
-        } else economy.loadPlayer(p, wasRegistered);
+        Bukkit.getScheduler().runTaskAsynchronously(BankPlus.INSTANCE(), () -> economy.loadPlayer(p, wasRegistered));
 
         players.putIfAbsent(uuid, bpPlayer);
         return bpPlayer;

@@ -35,8 +35,6 @@ public class PlayerServerListener implements Listener {
             wasRegistered = false;
         }
 
-        pManager.checkForFileFixes(p, pManager);
-
         int loadDelay = ConfigValues.getLoadDelay();
         if (loadDelay <= 0) PlayerRegistry.loadPlayer(p, wasRegistered);
         else Bukkit.getScheduler().runTaskLater(BankPlus.INSTANCE(), () -> PlayerRegistry.loadPlayer(p, wasRegistered), loadDelay);

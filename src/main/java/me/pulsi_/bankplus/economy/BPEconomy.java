@@ -2,7 +2,6 @@ package me.pulsi_.bankplus.economy;
 
 import me.pulsi_.bankplus.BankPlus;
 import me.pulsi_.bankplus.account.BPPlayer;
-import me.pulsi_.bankplus.account.BPPlayerManager;
 import me.pulsi_.bankplus.account.PlayerRegistry;
 import me.pulsi_.bankplus.bankSystem.Bank;
 import me.pulsi_.bankplus.bankSystem.BankRegistry;
@@ -10,10 +9,9 @@ import me.pulsi_.bankplus.bankSystem.BankUtils;
 import me.pulsi_.bankplus.events.BPAfterTransactionEvent;
 import me.pulsi_.bankplus.events.BPPreTransactionEvent;
 import me.pulsi_.bankplus.listeners.playerChat.PlayerChatMethod;
-import me.pulsi_.bankplus.mySQL.BPSQL;
-import me.pulsi_.bankplus.mySQL.SQLPlayerManager;
+import me.pulsi_.bankplus.dataStorage.PlayerAccountData;
+import me.pulsi_.bankplus.dataStorage.controllers.IBPDataController;
 import me.pulsi_.bankplus.utils.BPUtils;
-import me.pulsi_.bankplus.utils.texts.BPFormatter;
 import me.pulsi_.bankplus.utils.texts.BPMessages;
 import me.pulsi_.bankplus.values.ConfigValues;
 import me.pulsi_.bankplus.values.MessageValues;
@@ -21,7 +19,6 @@ import net.milkbowl.vault.economy.Economy;
 import net.milkbowl.vault.economy.EconomyResponse;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 
 import java.math.BigDecimal;
@@ -34,16 +31,9 @@ public class BPEconomy {
     private final HashMap<UUID, Holder> holders = new HashMap<>();
     private final Set<UUID> operations = new HashSet<>();
 
-    private final String moneyPath, interestPath, debtPath, levelPath;
 
     public BPEconomy(Bank originBank) {
         this.originBank = originBank;
-
-        String bankName = originBank.getIdentifier();
-        this.moneyPath = "banks." + bankName + ".money";
-        this.interestPath = "banks." + bankName + ".interest";
-        this.debtPath = "banks." + bankName + ".debt";
-        this.levelPath = "banks." + bankName + ".level";
     }
 
     /**
@@ -163,24 +153,16 @@ public class BPEconomy {
 
         boolean useStartAmount = !wasRegistered && BankUtils.isMainBank(originBank);
         Holder holder = new Holder();
-        if (BPSQL.isConnected()) {
-            SQLPlayerManager pm = new SQLPlayerManager(p);
-            String bankName = originBank.getIdentifier();
 
-            holder.debt = pm.getDebt(bankName);
-            holder.money = useStartAmount ? ConfigValues.getStartAmount() : pm.getMoney(bankName);
-            holder.bankLevel = pm.getLevel(bankName);
-            holder.offlineInterest = pm.getOfflineInterest(bankName);
+        IBPDataController playerController = BankPlus.INSTANCE().getDataManager().getPlayerController();
 
-            return holder;
-        }
+        PlayerAccountData playerAccountData = playerController.getPlayerAccountData(originBank.getIdentifier(),p );
 
-        FileConfiguration config = new BPPlayerManager(p).getPlayerConfig();
+        holder.debt = playerAccountData.debt();
+        holder.money = useStartAmount ? ConfigValues.getStartAmount() : playerAccountData.money();
+        holder.offlineInterest = playerAccountData.interest();
+        holder.bankLevel = playerAccountData.bankLevel();
 
-        holder.debt = BPFormatter.getStyledBigDecimal(config.getString(debtPath));
-        holder.money = useStartAmount ? ConfigValues.getStartAmount() : BPFormatter.getStyledBigDecimal(config.getString(moneyPath));
-        holder.offlineInterest = BPFormatter.getStyledBigDecimal(config.getString(interestPath));
-        holder.bankLevel = Math.max(config.getInt(levelPath), 1);
         return holder;
     }
 

@@ -19,7 +19,15 @@ import me.pulsi_.bankplus.listeners.PlayerServerListener;
 import me.pulsi_.bankplus.listeners.bankListener.*;
 import me.pulsi_.bankplus.listeners.playerChat.*;
 import me.pulsi_.bankplus.loanSystem.BPLoanRegistry;
-import me.pulsi_.bankplus.mySQL.BPSQL;
+import me.pulsi_.bankplus.dataStorage.controllers.BPDataController;
+import me.pulsi_.bankplus.dataStorage.controllers.BPDataControllerMirror;
+import me.pulsi_.bankplus.dataStorage.controllers.IBPDataController;
+import me.pulsi_.bankplus.dataStorage.repositories.plainText.BPDataRepositoryFileAccountName;
+import me.pulsi_.bankplus.dataStorage.repositories.plainText.BPDataRepositoryFileUuid;
+import me.pulsi_.bankplus.dataStorage.repositories.sql.BPDataRepositorySqlAccountName;
+import me.pulsi_.bankplus.dataStorage.repositories.sql.BPDataRepositorySqlUuid;
+import me.pulsi_.bankplus.dataStorage.services.BPDataService;
+import me.pulsi_.bankplus.dataStorage.services.IBPDataService;
 import me.pulsi_.bankplus.utils.BPLogger;
 import me.pulsi_.bankplus.utils.texts.BPChat;
 import me.pulsi_.bankplus.values.ConfigValues;
@@ -33,9 +41,11 @@ public class BPData {
     private boolean start = true;
 
     private final BankPlus plugin;
+    private IBPDataController playerController;
 
     public BPData(BankPlus plugin) {
         this.plugin = plugin;
+        playerController = null;
     }
 
     public void setupPlugin() {
@@ -72,6 +82,10 @@ public class BPData {
         BPLogger.Console.log("");
         BPLogger.Console.log("    " + BPChat.PREFIX + " <red>Plugin successfully disabled!");
         BPLogger.Console.log("");
+
+        if (playerController != null && playerController.isConnected()) {
+            playerController.disconnect();
+        }
     }
 
     public boolean reloadPlugin() {
@@ -96,11 +110,29 @@ public class BPData {
             // Load the banks to the registry before to make MySQL able to create the tables.
             BankRegistry.loadBanks();
 
-            if (!ConfigValues.isSqlEnabled()) BPSQL.disconnect();
-            else {
-                BPSQL.setupMySQL();
-                BPSQL.connect();
+
+            // --- Load the Player Data Controller ---
+            if (playerController != null && playerController.isConnected()) {
+                playerController.disconnect();
             }
+
+            IBPDataService fileService = new BPDataService(ConfigValues.isStoringUUIDs() ? new BPDataRepositoryFileUuid() : new BPDataRepositoryFileAccountName());
+
+            if (ConfigValues.isSqlEnabled()){
+                IBPDataService sqlService = new BPDataService(ConfigValues.isStoringUUIDs() ?
+                        new BPDataRepositorySqlUuid(ConfigValues.getSqlUsername(), ConfigValues.getSqlPassword(), ConfigValues.getSqlHost(), ConfigValues.getSqlPort(), ConfigValues.getSqlDatabase(), ConfigValues.isSqlUsingSSL()) :
+                         new BPDataRepositorySqlAccountName(ConfigValues.getSqlUsername(), ConfigValues.getSqlPassword(), ConfigValues.getSqlHost(), ConfigValues.getSqlPort(), ConfigValues.getSqlDatabase(), ConfigValues.isSqlUsingSSL()));
+
+                playerController = new BPDataControllerMirror(sqlService, fileService);
+            } else {
+
+                playerController = new BPDataController(fileService);
+            }
+
+
+            playerController.connect();
+
+
 
             if (!BPTaskManager.contains(BPTaskManager.MONEY_SAVING_TASK)) EconomyUtils.restartSavingInterval();
 
@@ -169,5 +201,9 @@ public class BPData {
         plugin.getCommand("bankplus").setExecutor(new MainCmd());
         plugin.getCommand("bankplus").setTabCompleter(new MainCmd());
         plugin.getCommand("banktop").setExecutor(new BankTopCmd());
+    }
+
+    public IBPDataController getPlayerController(){
+        return playerController;
     }
 }

@@ -1,13 +1,19 @@
 package me.pulsi_.bankplus.commands.list;
 
 import me.pulsi_.bankplus.BankPlus;
-import me.pulsi_.bankplus.account.BPPlayerManager;
 import me.pulsi_.bankplus.commands.BPCmdExecution;
 import me.pulsi_.bankplus.commands.BPCommand;
 import me.pulsi_.bankplus.economy.BPEconomy;
-import me.pulsi_.bankplus.mySQL.SQLPlayerManager;
+import me.pulsi_.bankplus.dataStorage.PlayerAccountData;
+import me.pulsi_.bankplus.dataStorage.controllers.BPDataController;
+import me.pulsi_.bankplus.dataStorage.controllers.IBPDataController;
+import me.pulsi_.bankplus.dataStorage.repositories.IBPDataRepository;
+import me.pulsi_.bankplus.dataStorage.repositories.plainText.BPDataRepositoryFileAccountName;
+import me.pulsi_.bankplus.dataStorage.repositories.plainText.BPDataRepositoryFileUuid;
+import me.pulsi_.bankplus.dataStorage.repositories.sql.BPDataRepositorySqlAccountName;
+import me.pulsi_.bankplus.dataStorage.repositories.sql.BPDataRepositorySqlUuid;
+import me.pulsi_.bankplus.dataStorage.services.BPDataService;
 import me.pulsi_.bankplus.utils.texts.BPArgs;
-import me.pulsi_.bankplus.utils.texts.BPFormatter;
 import me.pulsi_.bankplus.utils.texts.BPMessages;
 import me.pulsi_.bankplus.values.ConfigValues;
 import org.bukkit.Bukkit;
@@ -18,7 +24,6 @@ import org.bukkit.configuration.file.FileConfiguration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 public class TransferCmd extends BPCommand {
 
@@ -89,8 +94,37 @@ public class TransferCmd extends BPCommand {
                 BPMessages.send(s, "%prefix% Task initialized, wait a few moments...", false);
 
                 Bukkit.getScheduler().runTaskAsynchronously(BankPlus.INSTANCE(), () -> {
-                    if (args[1].equalsIgnoreCase("filestodatabase")) filesToDatabase();
-                    else databaseToFile();
+
+                    // Initialices the SQL and File controllers
+                    IBPDataController fileController;
+                    IBPDataController sqlController;
+                    IBPDataRepository fileRepo;
+                    IBPDataRepository sqlRepo;
+
+                    if (ConfigValues.isStoringUUIDs()) {
+                        fileRepo = new BPDataRepositoryFileUuid();
+                        sqlRepo = new BPDataRepositorySqlUuid(ConfigValues.getSqlUsername(), ConfigValues.getSqlPassword(), ConfigValues.getSqlHost(), ConfigValues.getSqlPort(), ConfigValues.getSqlDatabase(), ConfigValues.isSqlUsingSSL());
+                    } else {
+                        fileRepo = new BPDataRepositoryFileAccountName();
+                        sqlRepo = new BPDataRepositorySqlAccountName(ConfigValues.getSqlUsername(), ConfigValues.getSqlPassword(), ConfigValues.getSqlHost(), ConfigValues.getSqlPort(), ConfigValues.getSqlDatabase(), ConfigValues.isSqlUsingSSL());
+                    }
+
+                    fileController = new BPDataController(new BPDataService(fileRepo));
+                    sqlController = new BPDataController(new BPDataService(sqlRepo));
+
+
+                    fileController.connect();
+                    sqlController.connect();
+
+
+                    if (args[1].equalsIgnoreCase("filestodatabase")) {
+                        migratePlayers(fileController, sqlController);
+                    } else {
+                        migratePlayers(sqlController, fileController);
+                    }
+
+                    fileController.disconnect();
+                    sqlController.disconnect();
 
                     BPMessages.send(s, "%prefix% Task finished!", false);
                 });
@@ -105,43 +139,15 @@ public class TransferCmd extends BPCommand {
         return null;
     }
 
-    private void filesToDatabase() {
-        List<BPEconomy> economies = BPEconomy.list();
-        for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
-            BPPlayerManager pManager = new BPPlayerManager(p);
-            SQLPlayerManager sqlManager = new SQLPlayerManager(p);
 
-            FileConfiguration pConfig = pManager.getPlayerConfig();
-            for (BPEconomy economy : economies) {
-                String bankName = economy.getOriginBank().getIdentifier();
-                sqlManager.updatePlayer(
-                        economy.getOriginBank().getIdentifier(),
-                        BPFormatter.getStyledBigDecimal(pConfig.getString("banks." + bankName + ".debt")),
-                        BPFormatter.getStyledBigDecimal(pConfig.getString("banks." + bankName + ".money")),
-                        pConfig.getInt("banks." + bankName + ".level"),
-                        BPFormatter.getStyledBigDecimal(pConfig.getString("banks." + bankName + ".interest"))
-                );
+    private void migratePlayers(IBPDataController origin, IBPDataController destination) {
+        for (OfflinePlayer player : Bukkit.getOfflinePlayers()) {
+
+            for (String bankName : BPEconomy.nameList()) {
+                PlayerAccountData playerAccountData = origin.getPlayerAccountData(bankName, player);
+
+                destination.savePlayer(playerAccountData);
             }
-        }
-    }
-
-    private void databaseToFile() {
-        Set<String> banks = BPEconomy.nameList();
-        for (OfflinePlayer p : Bukkit.getOfflinePlayers()) {
-            BPPlayerManager pManager = new BPPlayerManager(p);
-            if (!pManager.isPlayerRegistered()) continue;
-
-            FileConfiguration config = pManager.getPlayerConfig();
-            SQLPlayerManager pm = new SQLPlayerManager(p);
-
-            for (String bankName : banks) {
-                config.set("banks." + bankName + ".debt", pm.getDebt(bankName).toPlainString());
-                config.set("banks." + bankName + ".interest", pm.getOfflineInterest(bankName).toPlainString());
-                config.set("banks." + bankName + ".level", pm.getLevel(bankName));
-                config.set("banks." + bankName + ".money", pm.getMoney(bankName).toPlainString());
-            }
-
-            pManager.savePlayerFile(config, pManager.getPlayerFile());
         }
     }
 }
