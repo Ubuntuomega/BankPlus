@@ -60,7 +60,7 @@ public class BPDataRepositorySqlAccountName extends BPDataRepositorySql {
             updatePlayer(playerAccountData);
         } else {
             try (Connection connection = dataSource.getConnection();
-                 PreparedStatement statement = connection.prepareStatement("INSERT INTO " + playerAccountData + " VALUES uuid = ?, account_name=?, bank_level=?, money=?, interest=?, debt=?")) {
+                 PreparedStatement statement = connection.prepareStatement("INSERT INTO " + playerAccountData + " (uuid, account_name, bank_level money, interest, debt) VALUES (?, ?, ?, ?, ?, ?)")) {
 
                 String uuid = playerAccountData.uuid().toString();
                 String accountName = playerAccountData.accountName();

@@ -122,7 +122,7 @@ public abstract class BPDataRepositorySql implements IBPDataRepository {
                 if (!isRegistered(player, bankName)) {
 
                     //INSERT IGNORE is in case new banks are added in prod.
-                    try (PreparedStatement statement = con.prepareStatement("INSERT IGNORE INTO " + bankName + " VALUES uuid = ?, account_name=?, bank_level=?, money=?, interest=?, debt=?")) {
+                    try (PreparedStatement statement = con.prepareStatement("INSERT IGNORE INTO " + bankName + " (uuid, account_name, bank_level, money, interest, debt) VALUES (?, ?, ?, ?, ?, ?)")) {
 
                         statement.setString(1, player.getUniqueId().toString()); //UUID
                         statement.setString(2, player.getName()); //Account name

@@ -36,7 +36,7 @@ public class BPDataRepositorySqlUuid extends BPDataRepositorySql {
     @Override
     public void savePlayer(PlayerAccountData playerAccountData) {
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement("INSERT INTO " + playerAccountData + " VALUES uuid = ?, account_name=?, bank_level=?, money=?, interest=?, debt=? ON DUPLICATE KEY UPDATE bank_level=?, money=?, interest=?, debt=?")) {
+             PreparedStatement statement = connection.prepareStatement("INSERT INTO " + playerAccountData + " (uuid, account_name, bank_level, money, interest, debt) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE bank_level=?, money=?, interest=?, debt=?")) {
 
             String uuid = playerAccountData.uuid().toString();
             String accountName = playerAccountData.accountName();
